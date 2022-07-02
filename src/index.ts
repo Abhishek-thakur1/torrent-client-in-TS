@@ -11,6 +11,6 @@ if (typeof (torrentFileName) !== 'undefined') {
     let pt = parseTorrent(torrentFile)
     let remaining: number = pt.pieces.length
 
-    console.log(torrentFile)
+    // console.log(torrentFile)
 }
 
