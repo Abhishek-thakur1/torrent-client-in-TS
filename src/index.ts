@@ -2,7 +2,9 @@ const fs = require('fs');
 const bencode = require('bencode');
 const parseTorrent = require('parse-torrent');
 
-const {PeerStateManager, PeerState} = require('./types')
+// const {PeerStateManager, PeerState} = require('./types')
+import {PeerStateManager, PeerState} from './types'
+
 const httpTracker = require('./httpTracker')
 const queue = require('./queue')
 const peer = require('./peer')

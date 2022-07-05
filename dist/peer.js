@@ -1,42 +1,33 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const net = require('net');
-const bencodePeer = require('bencode')
-const BufferPeer = require('buffer').Buffer
-const parseTorrentPeer = require('parse-torrent')
-
-const messageFactory = require('./messageFactory')
+const bencodePeer = require('bencode');
+const BufferPeer = require('buffer').Buffer;
+const parseTorrentPeer = require('parse-torrent');
+const messageFactory = require('./messageFactory');
 const oEnvironment = require('./envionment');
-import {PeerStateManager} from './types'
-
-let keepAliveInterval: any = null;
-let ptPeer: any = null;
-let pieceCache: Array<any> = [];
-let blockCount: Array<number> = [];
-
-
-module.exports.download = function (ip: any, port: any, torrent: any, peerStateManager: PeerStateManager) {
-
+let keepAliveInterval = null;
+let ptPeer = null;
+let pieceCache = [];
+let blockCount = [];
+module.exports.download = function (ip, port, torrent, peerStateManager) {
     ptPeer = parseTorrentPeer(bencodePeer.encode(torrent));
     var peerString = ip + ":" + port;
     console.log("Trying to open TCP connection to peer " + peerString);
     var socket = net.createConnection(port, ip);
-    socket.on("connect", function() {
+    socket.on("connect", function () {
         peerStateManager.log(peerString, "Connected");
         peerStateManager.updateStatus(peerString, "Connected");
-
         //send keep-alive every 100 sec
-        keepAliveInterval = setInterval(function() {
+        keepAliveInterval = setInterval(function () {
             peerStateManager.log(peerString, "Sent Keep-Alive");
             socket.write(messageFactory.keepAlive().rawBuffer);
         }, 100000);
-
         socket.write(messageFactory.handshake(torrent).rawBuffer);
         peerStateManager.log(peerString, "handshake sent ");
-
         //receiveCompleteMessage(socket, function(message) {
-        onWholeMsg(socket, function(message: any) {
-        
+        onWholeMsg(socket, function (message) {
             var parsedMessage = messageFactory.parse(message);
-            
             //check the type of incoming message and respond with the suitable meesage
             switch (parsedMessage.messageID) {
                 case -2:
@@ -55,13 +46,11 @@ module.exports.download = function (ip: any, port: any, torrent: any, peerStateM
                     chokeHandler(peerStateManager, peerString);
                     break;
                 case 1:
-                    
-                //console.log("Incoming message: Un-Choke received form peer " + peerString);
+                    //console.log("Incoming message: Un-Choke received form peer " + peerString);
                     peerStateManager.log(peerString, "Un-Choke received ");
                     unchokeHandler(socket, peerStateManager, peerString);
                     break;
                 case 2:
-
                     //console.log("Incoming message: Interested received form peer " + peerString);
                     peerStateManager.log(peerString, "Interested received ");
                     break;
@@ -97,57 +86,47 @@ module.exports.download = function (ip: any, port: any, torrent: any, peerStateM
                     //console.log("Incoming message: port received form peer " + peerString);
                     peerStateManager.log(peerString, "Port received ");
                     break;
-
                 default:
                     //console.log("Message type " + parsedMessage.messageID + " does not match any messages");
                     peerStateManager.log(peerString, "Message type " + parsedMessage.messageID + " does not match any messages");
             }
         });
-        
-    }).on("close", function() {
+    }).on("close", function () {
         clearInterval(keepAliveInterval);
         peerStateManager.log(peerString, "Closed");
         peerStateManager.updateStatus(peerString, "Disconnected");
         console.log("Connection to peer " + peerString + " closed");
-    }).on("error", function(err: any) {
+    }).on("error", function (err) {
         peerStateManager.log(peerString, err);
         peerStateManager.updateStatus(peerString, "Disconnected");
         console.log("error occoured in connection to " + peerString);
     });
-}
-
+};
 // ******************************************************
-
-function onWholeMsg(socket: any, callback: any) {
+function onWholeMsg(socket, callback) {
     var savedBuf = Buffer.alloc(0);
     var handshake = true;
-
     socket.on('data', recvBuf => {
         // msgLen calculates the length of a whole message
         const msgLen = () => handshake ? savedBuf.readUInt8(0) + 49 : savedBuf.readInt32BE(0) + 4;
         savedBuf = Buffer.concat([savedBuf, recvBuf]);
-
         while (savedBuf.length >= 4 && savedBuf.length >= msgLen()) {
             callback(savedBuf.slice(0, msgLen()));
             savedBuf = savedBuf.slice(msgLen());
             handshake = false;
         }
     });
-};
-
+}
+;
 // *********************************************************
-
 function getBuffer() {
     return Buffer.alloc(0);
 }
-
 // ******************************************************************
-
-function haveHandler(socket: any, rawMessage: any, peerStateManager: PeerStateManager, peerString: string) {
+function haveHandler(socket, rawMessage, peerStateManager, peerString) {
     //enqueue the piece
     var pieceNumber = rawMessage.readUInt32BE(5);
     peerStateManager.log(peerString, "Have(" + pieceNumber + ")");
-
     var wasQueueEmpty = peerStateManager.isEmpty(peerString);
     peerStateManager.enqueue(peerString, pieceNumber);
     /*
@@ -157,7 +136,6 @@ function haveHandler(socket: any, rawMessage: any, peerStateManager: PeerStateMa
     3:Peice not already requested
     */
     if (!peerStateManager.isChokingMe(peerString) && wasQueueEmpty && (peerStateManager.isRequested(pieceNumber) === false)) {
-        
         sendRequest(pieceNumber, socket);
         //console.log("Outgoing message : Sent request for a piece to peer " + peerString);
         peerStateManager.log(peerString, "Sent request for " + pieceNumber + " ");
@@ -166,37 +144,30 @@ function haveHandler(socket: any, rawMessage: any, peerStateManager: PeerStateMa
     }
     //peerStateManager.setPeerQueue(peerString, peerQueue);
 }
-
 // ***********************************************************************
-
-function pieceHandler(socket: any, rawMessage: any, peerStateManager: PeerStateManager, peerString: string, torrent: any) {
+function pieceHandler(socket, rawMessage, peerStateManager, peerString, torrent) {
     /*
     validate hash
     save if valid discard otherwise
     request next piece in queue
     [TODO] Special handling for last piece [done]
     */
-
     var pieceLength = rawMessage.readInt32BE(0) - 9;
-
     //peerStateManager.log(peerString, "Received block of length : " + pieceLength);
-
     var pieceNumber = rawMessage.readUInt32BE(5);
     var blockOffset = rawMessage.readUInt32BE(9);
-
     //length of last piece is diffrent
     //var pieceSize = (pieceNumber == pt.pieces.length -1)?pt.lastPieceLength:16384;
     // var pieceBuffer = Buffer.alloc(pieceSize);
     // rawMessage.copy(pieceBuffer, 0, 13, pieceSize+13);
     //var pieceBuffer = Buffer.alloc(pieceLength);
     rawMessage.copy(pieceCache[pieceNumber], blockOffset, 13, pieceLength + 13);
-
     var noOfBlocks = (pieceNumber == ptPeer.pieces.length - 1) ? Math.ceil(ptPeer.lastPieceLength / 16384) : Math.ceil(ptPeer.pieceLength / 16384);
     if (++blockCount[pieceNumber] == noOfBlocks) {
         //all blocks received, save piece
         var incomingPieceHash = oEnvironment.getHash(pieceCache[pieceNumber]);
         var expectedHash = ptPeer.pieces[pieceNumber];
-        peerStateManager.log(peerString,"Received all blocks for piece "+pieceNumber);
+        peerStateManager.log(peerString, "Received all blocks for piece " + pieceNumber);
         if (incomingPieceHash == expectedHash) {
             //valid piece, save
             peerStateManager.log(peerString, "valid piece");
@@ -212,7 +183,7 @@ function pieceHandler(socket: any, rawMessage: any, peerStateManager: PeerStateM
         }
         //request next piece
         var nextPiece = nextRequestablePiece(peerStateManager, peerString);
-        if (typeof(nextPiece) != "undefined") {
+        if (typeof (nextPiece) != "undefined") {
             //piece not requested yet from any peer
             // build and send request
             // var req = ( nextPiece == pt.pieces.length - 1 ) ? messageFactory.request(nextPiece,pt.lastPieceLength).rawBuffer: messageFactory.request(nextPiece).rawBuffer;
@@ -229,10 +200,8 @@ function pieceHandler(socket: any, rawMessage: any, peerStateManager: PeerStateM
     //var pieceString = pieceBuffer.toString();
     //var incomingPieceHash = oEnvironment.getHash(pieceString);
 }
-
 // **************************************************************
-
-function nextRequestablePiece(peerStateManager: PeerStateManager, peerString: string) {
+function nextRequestablePiece(peerStateManager, peerString) {
     //find a piece which has not been requested
     var retval;
     var nextPiece = peerStateManager.dequeue(peerString); //peerQueue.dequeue();
@@ -245,14 +214,12 @@ function nextRequestablePiece(peerStateManager: PeerStateManager, peerString: st
     }
     return retval;
 }
-
 // ********************************************************************
-
-function unchokeHandler(socket: any, peerStateManager: PeerStateManager, peerString: string) {
+function unchokeHandler(socket, peerStateManager, peerString) {
     peerStateManager.markUnchoked(peerString);
     //request next piece
     var nextPiece = nextRequestablePiece(peerStateManager, peerString);
-    if (typeof(nextPiece) != "undefined") {
+    if (typeof (nextPiece) != "undefined") {
         // var req = ( nextPiece == pt.pieces.length - 1 ) ? messageFactory.request(nextPiece,pt.lastPieceLength).rawBuffer: messageFactory.request(nextPiece).rawBuffer;
         // //var req = messageFactory.request(nextPiece).rawBuffer;
         // socket.write(req);
@@ -261,22 +228,17 @@ function unchokeHandler(socket: any, peerStateManager: PeerStateManager, peerStr
         peerStateManager.markRequested(nextPiece);
     }
 }
-
 // ***************************************************************************
-
-function chokeHandler(peerStateManager: PeerStateManager, peerString: string) {
+function chokeHandler(peerStateManager, peerString) {
     peerStateManager.markedChoked(peerString);
 }
-
 // *************************************************************************
-
-function bitfieldHandler(socket: any, rawMessage: any, peerStateManager: PeerStateManager, peerString: string) {
+function bitfieldHandler(socket, rawMessage, peerStateManager, peerString) {
     //parse bitfield and enqueue pieceNumbers
     //calculate length of bitfield
     // read the first 32bit integer
     var bitfieldSize = rawMessage.readUInt32BE(0) - 1 || 0;
     //peerStateManager.log(peerString, "Received a bitfield of size " + bitfieldSize);
-
     // var bitfield = rawMessage.readUInt32BE(5);
     // var parsedBitfield = bitfield.toString(2);
     // peerStateManager.log(peerString, "un-parsed bitfield  " + bitfield + " ");
@@ -295,18 +257,14 @@ function bitfieldHandler(socket: any, rawMessage: any, peerStateManager: PeerSta
         }
     }
 }
-
 // ********************************************************************
-
-function prefixZeros(binaryRep: string) {
+function prefixZeros(binaryRep) {
     while (binaryRep.length < 8)
         binaryRep = "0" + binaryRep;
     return binaryRep;
 }
-
 // *****************************************************************************
-
-function sendRequest(pieceNumber: number, socket: any) {
+function sendRequest(pieceNumber, socket) {
     var plen = (pieceNumber == ptPeer.pieces.length - 1) ? ptPeer.lastPieceLength : ptPeer.pieceLength;
     pieceCache[pieceNumber] = Buffer.alloc(plen);
     blockCount[pieceNumber] = 0;
@@ -326,4 +284,3 @@ function sendRequest(pieceNumber: number, socket: any) {
         offsetMultilyer++;
     }
 }
-

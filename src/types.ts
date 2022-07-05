@@ -1,7 +1,7 @@
-interface PeerStateManager {
+export interface PeerStateManager {
     log(peerString: string, messageToBeLogged: string): void;
     updateStatus(peerString: string, status: string): void;
-    isRequested(pieceNumber: number): boolean;
+    isRequested(pieceNumber: number | any): boolean;
     markRequested(pieceNumber: number): void;
     markNotRequested(pieceNumber: number): void;
     getPeerQueue(peerString: string): any;
@@ -12,9 +12,12 @@ interface PeerStateManager {
     markedChoked(peerString: string): void;
     enqueue(peerString: string, value: number): void;
     dequeue(peerString: string): void;
-    isEmpty(peerString: string): void;
+    isEmpty(peerString: string): any;
 }
 
-type PeerState = Array<any> & { [index: string]: any };
+export type PeerState = Array<any> & { [index: string]: any };
 
-module.exports = {PeerStateManager, PeerState};
+export interface Peer {
+    ip: any;
+    port: any;
+}

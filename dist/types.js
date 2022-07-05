@@ -1,2 +1,2 @@
 "use strict";
-module.exports = { PeerStateManager, PeerState };
+Object.defineProperty(exports, "__esModule", { value: true });
