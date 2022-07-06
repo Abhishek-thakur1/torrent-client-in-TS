@@ -43,7 +43,7 @@ function getPeerList(torrent: any, callback: any): void{
                     if (type == "Object") {
                         console.log("Compact Notation");
                         for (var i = 0; i < decodedBody.peers.length; i += 6) {
-                            var peer: Peer = {
+                            var peer = {
                                 ip: num2dot(decodedBody.peers.readUInt32BE(i)),
                                 port: decodedBody.peers.readUIntBE(i + 4, 2).toString()
                             };

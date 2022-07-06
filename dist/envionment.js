@@ -1,4 +1,3 @@
-"use strict";
 const crypto = require('crypto');
 let id = null;
 module.exports.getID = function (clientEncodingPrefix) {

@@ -1,4 +1,3 @@
-"use strict";
 module.exports.Queue = function () {
     var arr = [];
     this.enqueue = function (value) {

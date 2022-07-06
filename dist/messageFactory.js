@@ -1,4 +1,3 @@
-"use strict";
 const cryptoMess = require('crypto');
 const BufferMess = require('buffer').Buffer;
 const bencodeMess = require('bencode');
