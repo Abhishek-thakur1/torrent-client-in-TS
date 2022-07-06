@@ -43,7 +43,7 @@ if (typeof (torrentFileName) !== 'undefined') {
             peerState[peerString].pieceQueue = peerQueue;
         },
         savePiece: function (pieceNumber, piece) {
-            // savePieceToFile(pieceNumber, piece);
+            savePieceToFile(pieceNumber, piece);
             remaining--;
         },
         isChokingMe: function (peerString) {
