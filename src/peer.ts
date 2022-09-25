@@ -184,7 +184,7 @@ function pieceHandler(socket: any, rawMessage: any, peerStateManager: PeerStateM
     var pieceNumber = rawMessage.readUInt32BE(5);
     var blockOffset = rawMessage.readUInt32BE(9);
 
-    //length of last piece is diffrent
+    //length of last piece is different
     //var pieceSize = (pieceNumber == pt.pieces.length -1)?pt.lastPieceLength:16384;
     // var pieceBuffer = Buffer.alloc(pieceSize);
     // rawMessage.copy(pieceBuffer, 0, 13, pieceSize+13);
