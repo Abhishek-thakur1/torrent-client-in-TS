@@ -48,7 +48,7 @@ module.exports.handshake = function(torrent: any) {
     var oMessage = new message(-1);
 
     // we assume that the caller calls with the decoded torrent file
-    //therefore to get the torrentfile we encode it again
+    //therefore to get the torrent file we encode it again
 
     var torrentFile = bencodeMess.encode(torrent);
     

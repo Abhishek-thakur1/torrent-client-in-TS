@@ -7,7 +7,7 @@ import { Peer } from './types'
 
 let j: number = 0;
 
-function getPeerList(torrent: any, callback: any): void {
+function getPeerList(torrent: any, callback: any): any {
 
     // creating and sending announce request...
 
@@ -82,7 +82,7 @@ function getAnnounceQueryString(torrent: any): string {
 
 function escapeInfoHash(infoHash: any): any {
     var h = infoHash;
-    h = h.replace(/.{2}/g, function (m: string) {
+    h = h.replace(/.{2}/g, function(m: string) {
         var v = parseInt(m, 16);
         if (v <= 127) {
             m = encodeURIComponent(String.fromCharCode(v));
